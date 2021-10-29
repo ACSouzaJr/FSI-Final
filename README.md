@@ -2,7 +2,7 @@
 
 ## Rodar o projeto
 
-Instalar as bibliotecas : `pip install -r requirements`
+Instalar as bibliotecas : `pip install -r requirements.txt`
 Run: `streamlit run news_classifier.py`
 
 ## Dataset
