@@ -56,10 +56,11 @@ def wordcloud_by_category(dataset: pd.DataFrame, category: List[str]):
     selected_df = dataset[dataset['category'] == category]
     text = " ".join(selected_df['text'].to_numpy())
     # Create and generate a word cloud image:
-    wordcloud = WordCloud(stopwords=set(STOPWORDS), max_font_size=50,
-                          max_words=100, background_color="white").generate(text)
+    wordcloud = WordCloud(stopwords=set(STOPWORDS), max_font_size=100,
+                          max_words=100, width=1000, height=328, background_color="white").generate(text)
     # Display the generated image:
     fig, ax = plt.subplots()
+    plt.figure(figsize=[20, 5])
     ax.imshow(wordcloud, interpolation='bilinear')
     ax.axis("off")
     st.pyplot(fig)
@@ -241,7 +242,7 @@ st.write(
 
 plt.title('Amount of News Based On Category')
 plt.xticks(rotation=90)
-fig = sns.countplot(data=raw_df, x='category', color='lightblue')
+fig = sns.countplot(data=raw_df, x='category', color='purple')
 st.pyplot(fig.figure)
 
 # Preprocessing
@@ -259,9 +260,8 @@ tfidf_train, tfidf_test, tfidf = apply_tfidf(X_train, X_test, X)
 
 st.title("Visualização")
 st.subheader("TSNE")
-# generate_tsne_visualization(tfidf)
-#
-#
+generate_tsne_visualization(tfidf)
+
 st.subheader("Word Cloud x Category")
 category = st.selectbox('Selecione a categoria', label_names)
 wordcloud_by_category(preprocessed_df, category)
