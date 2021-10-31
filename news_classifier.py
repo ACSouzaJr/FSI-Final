@@ -48,7 +48,13 @@ def select_categories(dataset: pd.DataFrame, categories: List[str]):
     return filtered_dataset
 
 
-@st.cache(suppress_st_warning=True)
+@ st.cache(suppress_st_warning=True)
+def limit_samples_of_each_category(dataset: pd.DataFrame):
+    dataset = dataset.groupby('category').apply(lambda x: x.sample(200))
+    return dataset
+
+
+@ st.cache(suppress_st_warning=True)
 def preprocessing(dataset: pd.DataFrame, entire_dataset: bool):
     if entire_dataset:
         # Drop unused columns
@@ -73,8 +79,14 @@ def preprocessing(dataset: pd.DataFrame, entire_dataset: bool):
     # Convert tokens to sentences
     text_data = [TreebankWordDetokenizer().detokenize(text)
                  for text in text_data]
-    text_data
     return text_data
+
+
+def split_dataset(data_text: pd.DataFrame, y: pd.core.series.Series):
+    # Split matrix into random train and test subsets
+    x_train, x_test, y_train, y_test = train_test_split(
+        data_text, y, test_size=0.25, random_state=0)
+    return x_train, x_test, y_train, y_test
 
 
 @st.cache(suppress_st_warning=True, allow_output_mutation=True)
@@ -88,13 +100,6 @@ def apply_tfidf(x_train: pd.DataFrame, x_test: pd.DataFrame, data_text: pd.DataF
     # For visualization
     tfidf = vectorizer.fit_transform(data_text)
     return tfidf_train, tfidf_test, tfidf
-
-
-def split_dataset(data_text: pd.DataFrame, y: pd.core.series.Series):
-    # Split matrix into random train and test subsets
-    x_train, x_test, y_train, y_test = train_test_split(
-        data_text, y, test_size=0.25, random_state=0)
-    return x_train, x_test, y_train, y_test
 
 # Plot categories graph
 
@@ -203,7 +208,7 @@ def classificate_svm(tfidf_train: sp.sparse.csr.csr_matrix, tfidf_test: sp.spars
     y_true, y_pred = y_test, svm_clf.predict(tfidf_test)
     # Print a text report showing the main classification metrics
     st.write('Classification report: ')
-    #print('Classes: ', svm_clf.classes_)
+    # print('Classes: ', svm_clf.classes_)
     report = classification_report(
         y_true, y_pred, zero_division=0, output_dict=True)
     df = pd.DataFrame(report).transpose()
@@ -262,6 +267,8 @@ def classificate_mlp(tfidf_train: sp.sparse.csr.csr_matrix, tfidf_test: sp.spars
     # Print Confusion Matrix
     plot_confusion_matrix(mlp_clf, tfidf_test, y_test)
 
+# ----------------------------------------------------------------------------------------------------
+
 
 DATASET_FILE_PATH = 'dataset/News_Category_Dataset_v2.json'
 
@@ -309,7 +316,7 @@ st.subheader("Gráficos de dispersão")
 techniques_names = ["t-SNE", "PCA", "MDS"]
 technique = st.selectbox(
     'Selecione a técnica de redução de dimensionalidade', techniques_names)
-visualization_by_technique(tfidf, technique)
+# visualization_by_technique(tfidf, technique)
 
 st.title("Classificação")
 st.subheader("SVM")
@@ -320,13 +327,23 @@ news_input = st.text_area("Digite abaixo uma notícia", '')
 news_input = pd.DataFrame({news_input})
 
 if st.button('Classificar'):
+    # Preprocessing
+    limited_df = limit_samples_of_each_category(raw_df)
+    X_news = preprocessing(limited_df, True)
+    y_news = limited_df['category'].to_numpy()
+    preprocessed_df = pd.DataFrame({'text': X_news, 'category': y_news})
     preprocessed_news_input = preprocessing(news_input, False)
-    preprocessed_news_input_df = pd.DataFrame(
-        {'text': preprocessed_news_input})
+
+    # Data spliting
+    X_train_news, X_test_news, y_train_news, y_test_news = split_dataset(
+        X_news, y_news)
+
+    # Tf-idf
     vectorizer = TfidfVectorizer(stop_words='english')
-    tfidf = vectorizer.fit_transform(X)
-    vectorizer.fit(X)
-    tfidf_news = vectorizer.transform(preprocessed_news_input_df)
-    # preprocessed_news_input_df
-    # tfidf_news
-    classificate_svm_news_input(tfidf, tfidf_news, label_names, y)
+    vectorizer.fit(X_train_news)
+    tfidf_train_news = vectorizer.transform(X_train_news)
+    tfidf_test_news_input = vectorizer.transform(preprocessed_news_input)
+
+    # Classification
+    classificate_svm_news_input(
+        tfidf_train_news, tfidf_test_news_input, label_names, y_train_news)
