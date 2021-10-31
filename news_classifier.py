@@ -1,15 +1,4 @@
 import warnings
-from sklearn.metrics import silhouette_score
-from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
-from sklearn.metrics import classification_report
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.naive_bayes import MultinomialNB
-from sklearn.neural_network import MLPClassifier
-from sklearn.svm import SVC
-from sklearn.manifold import MDS
-from sklearn.decomposition import PCA
-from sklearn.decomposition import TruncatedSVD
-from sklearn.manifold import TSNE
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.model_selection import train_test_split
 from nltk.tokenize.treebank import TreebankWordDetokenizer
@@ -17,14 +6,17 @@ from nltk.stem import LancasterStemmer, WordNetLemmatizer
 from typing import List
 import streamlit as st
 
-import numpy as np
+# Classification
+from classification import classificate_svm, classificate_svm_news_input, classificate_mlp, classificate_nb, classificate_rf
+
+# Visualization
+from visualization import visualization_by_technique, wordcloud_by_category
+
 import pandas as pd
-import scipy as sp
 import string
 
 import seaborn as sns
 import matplotlib.pyplot as plt
-from wordcloud import WordCloud, STOPWORDS
 
 import nltk
 nltk.download('punkt')
@@ -48,13 +40,13 @@ def select_categories(dataset: pd.DataFrame, categories: List[str]):
     return filtered_dataset
 
 
-@ st.cache(suppress_st_warning=True)
+@st.cache(suppress_st_warning=True)
 def limit_samples_of_each_category(dataset: pd.DataFrame):
     dataset = dataset.groupby('category').apply(lambda x: x.sample(200))
     return dataset
 
 
-@ st.cache(suppress_st_warning=True)
+@st.cache(suppress_st_warning=True)
 def preprocessing(dataset: pd.DataFrame, entire_dataset: bool):
     if entire_dataset:
         # Drop unused columns
@@ -101,187 +93,6 @@ def apply_tfidf(x_train: pd.DataFrame, x_test: pd.DataFrame, data_text: pd.DataF
     tfidf = vectorizer.fit_transform(data_text)
     return tfidf_train, tfidf_test, tfidf
 
-# Plot categories graph
-
-
-@st.cache(suppress_st_warning=True)
-def plot_by_category(dataset: pd.DataFrame, category: List[str]):
-    plt.title('Amount of News Based On Category')
-    plt.xticks(rotation=90)
-    fig = sns.countplot(data=dataset[list(category)], x='category')
-    st.pyplot(fig.figure)
-
-# Plot wordcloud
-
-
-def wordcloud_by_category(dataset: pd.DataFrame, category: List[str]):
-    selected_df = dataset[dataset['category'] == category]
-    text = " ".join(selected_df['text'].to_numpy())
-    # Create and generate a word cloud image:
-    wordcloud = WordCloud(stopwords=set(STOPWORDS), max_font_size=100,
-                          max_words=100, width=1000, height=328, background_color="white").generate(text)
-    # Display the generated image:
-    fig, ax = plt.subplots()
-    plt.figure(figsize=[20, 5])
-    ax.imshow(wordcloud, interpolation='bilinear')
-    ax.axis("off")
-    st.pyplot(fig)
-
-
-# Visualization - Scatter plot
-def visualization_by_technique(tfidf: sp.sparse.csr.csr_matrix, technique: str):
-    if technique == 'PCA':
-        generate_pca_visualization(tfidf)
-    elif technique == 'MDS':
-        generate_mds_visualization(tfidf)
-    else:
-        generate_tsne_visualization(tfidf)
-
-# @st.cache(suppress_st_warning=True)
-
-
-def generate_tsne_visualization(tfidf: sp.sparse.csr.csr_matrix):
-    tsne_tfidf = TSNE(n_components=2, learning_rate=100,
-                      perplexity=40).fit_transform(tfidf)
-    st.write('Silhouette Score:', silhouette_score(tsne_tfidf, y))
-    data_text = pd.DataFrame(tsne_tfidf)
-    data_text['label'] = y
-    data_text.columns = ['x', 'y', 'label']
-    plt.figure(figsize=(13, 7))
-    fig = sns.scatterplot(data=data_text, x='x', y='y', hue='label')
-    st.pyplot(fig.figure)
-
-# @st.cache(suppress_st_warning=True)
-
-
-def generate_pca_visualization(tfidf: sp.sparse.csr.csr_matrix):
-    not_sparse_tfidf = TruncatedSVD(
-        n_components=2, n_iter=7).fit_transform(tfidf)
-    pca_tfidf = PCA(n_components=2).fit_transform(not_sparse_tfidf)
-    st.write('Silhouette Score:', silhouette_score(pca_tfidf, y))
-    data_text = pd.DataFrame(pca_tfidf)
-    data_text['label'] = y
-    data_text.columns = ['x', 'y', 'label']
-    plt.figure(figsize=(13, 7))
-    fig = sns.scatterplot(data=data_text, x='x', y='y', hue='label')
-    st.pyplot(fig.figure)
-
-# @st.cache(suppress_st_warning=True)
-
-
-def generate_mds_visualization(tfidf: sp.sparse.csr.csr_matrix):
-    mds_tfidf = MDS(n_components=2).fit_transform(tfidf.toarray())
-    st.write('Silhouette Score:', silhouette_score(mds_tfidf, y))
-    data_text = pd.DataFrame(mds_tfidf)
-    data_text['label'] = y
-    data_text.columns = ['x', 'y', 'label']
-    plt.figure(figsize=(13, 7))
-    fig = sns.scatterplot(data=data_text, x='x', y='y', hue='label')
-    st.pyplot(fig.figure)
-
-# Classification
-
-
-def plot_confusion_matrix(classifier, X_test, y_test):
-    disp = ConfusionMatrixDisplay.from_estimator(
-        classifier, X_test, y_test, display_labels=classifier.classes_, cmap=plt.cm.Blues)
-    st.pyplot(disp.figure_)
-
-
-@st.cache(suppress_st_warning=True)
-def classificate_svm_news_input(tfidf_train: sp.sparse.csr.csr_matrix, tfidf_test: sp.sparse.csr.csr_matrix, label_names, y_train):
-    # Define a Support Vector Machine classifier
-    svm_clf = SVC(C=1000, gamma=0.001, kernel='sigmoid')
-    # Apply SVM
-    svm_clf.fit(tfidf_train, y_train)
-    # Predict labels using test data
-    y_pred = svm_clf.predict(tfidf_test)
-    st.write('A notícia escolhida pertence à categoria ', y_pred[0], '.')
-
-
-classification_names = ["SVM", "Random Forest",
-                        "Naive Bayes", "Multilayer Perceptron"]
-
-
-def classification_by_classifier(classifier: str, tfidf_train: sp.sparse.csr.csr_matrix, tfidf_test: sp.sparse.csr.csr_matrix, y_test):
-    if classifier == 'Random Forest':
-        classificate_rf(tfidf_train, tfidf_test, y_test)
-    elif classifier == 'Naive Bayes':
-        classificate_nb(tfidf_train, tfidf_test, y_test)
-    elif classifier == 'Multilayer Perceptron':
-        classificate_mlp(tfidf_train, tfidf_test, y_test)
-    else:
-        classificate_svm(tfidf_train, tfidf_test, y_test)
-
-
-def classificate_svm(tfidf_train: sp.sparse.csr.csr_matrix, tfidf_test: sp.sparse.csr.csr_matrix, labels_names):
-    # Define a Support Vector Machine classifier
-    svm_clf = SVC(C=1000, gamma=0.001, kernel='sigmoid')
-    # Apply SVM
-    svm_clf.fit(tfidf_train, y_train)
-    # Predict labels using test data
-    y_true, y_pred = y_test, svm_clf.predict(tfidf_test)
-    # Print a text report showing the main classification metrics
-    st.write('Classification report: ')
-    # print('Classes: ', svm_clf.classes_)
-    report = classification_report(
-        y_true, y_pred, zero_division=0, output_dict=True)
-    df = pd.DataFrame(report).transpose()
-    df
-    # Print Confusion Matrix
-    # plot_confusion_matrix(svm_clf, tfidf_test, y_test)
-
-
-def classificate_rf(tfidf_train: sp.sparse.csr.csr_matrix, tfidf_test: sp.sparse.csr.csr_matrix, labels_names):
-    # Define a Random Forest classifier
-    rf_clf = RandomForestClassifier(
-        criterion='gini', max_depth=None, max_features='log2', n_estimators=300, random_state=0)
-    # Apply Random Forest
-    rf_clf.fit(tfidf_train, y_train)
-    # Predict labels using test data
-    y_true, y_pred = y_test, rf_clf.predict(tfidf_test)
-    # Print a text report showing the main classification metrics
-    '## Classification report: '
-    report = classification_report(
-        y_true, y_pred, zero_division=0, output_dict=True)
-    df = pd.DataFrame(report).transpose()
-    df
-    # Print Confusion Matrix
-    # plot_confusion_matrix(rf_clf, tfidf_test, y_test)
-
-
-def classificate_nb(tfidf_train: sp.sparse.csr.csr_matrix, tfidf_test: sp.sparse.csr.csr_matrix, labels_names):
-    mnb_clf = MultinomialNB(alpha=0.1)
-    # Apply Multinomial Naive Bayes
-    mnb_clf.fit(tfidf_train, y_train)
-    # Predict labels using test data
-    y_true, y_pred = y_test, mnb_clf.predict(tfidf_test)
-    # Print a text report showing the main classification metrics
-    '## Classification report: '
-    report = classification_report(
-        y_true, y_pred, zero_division=0, output_dict=True)
-    df = pd.DataFrame(report).transpose()
-    df
-    # Print Confusion Matrix
-    # plot_confusion_matrix(mnb_clf, tfidf_test, y_test)
-
-
-def classificate_mlp(tfidf_train: sp.sparse.csr.csr_matrix, tfidf_test: sp.sparse.csr.csr_matrix, labels_names):
-    # Define a MLPClassifier classifier
-    mlp_clf = MLPClassifier()
-    # Apply SVM
-    mlp_clf.fit(tfidf_train, y_train)
-    # Predict labels using test data
-    y_true, y_pred = y_test, mlp_clf.predict(tfidf_test)
-    # Print a text report showing the main classification metrics
-    '## Classification report: '
-    report = classification_report(
-        y_true, y_pred, zero_division=0, output_dict=True)
-    df = pd.DataFrame(report).transpose()
-    df
-    # Print Confusion Matrix
-    # plot_confusion_matrix(mlp_clf, tfidf_test, y_test)
-
 # ----------------------------------------------------------------------------------------------------
 
 
@@ -303,7 +114,7 @@ st.write(filtered_df.head())
 st.write(
     "Para classificação iremos utilizar apenas as colunas ['headline', 'short_description']")
 
-plt.title('Amount of News Based On Category')
+plt.title('Quantidade de notícias por categoria')
 plt.xticks(rotation=90)
 fig = sns.countplot(data=raw_df, x='category', color='purple')
 st.pyplot(fig.figure)
@@ -337,8 +148,9 @@ st.title("Classificação")
 classifier_names = ["SVM", "Random Forest",
                     "Naive Bayes", "Multilayer Perceptron"]
 classifier = st.selectbox(
-    'Selecione um classificador:', classification_names)
-classificate_svm(tfidf_train, tfidf_test, y)
+    'Selecione um classificador:', classifier_names)
+st.subheader(classifier)
+classificate_svm(tfidf_train, tfidf_test, y_train, y_test)
 # classification_by_classifier(classifier, tfidf_train, tfidf_test, y)
 
 st.title("Descubra a categoria da sua notícia")
@@ -365,4 +177,4 @@ if st.button('Classificar'):
 
     # Classification
     classificate_svm_news_input(
-        tfidf_train_news, tfidf_test_news_input, label_names, y_train_news)
+        tfidf_train_news, tfidf_test_news_input, y_train_news)
