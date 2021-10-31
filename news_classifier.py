@@ -199,6 +199,21 @@ def classificate_svm_news_input(tfidf_train: sp.sparse.csr.csr_matrix, tfidf_tes
     st.write('A notícia escolhida pertence à categoria ', y_pred[0], '.')
 
 
+classification_names = ["SVM", "Random Forest",
+                        "Naive Bayes", "Multilayer Perceptron"]
+
+
+def classification_by_classifier(classifier: str, tfidf_train: sp.sparse.csr.csr_matrix, tfidf_test: sp.sparse.csr.csr_matrix, y_test):
+    if classifier == 'Random Forest':
+        classificate_rf(tfidf_train, tfidf_test, y_test)
+    elif classifier == 'Naive Bayes':
+        classificate_nb(tfidf_train, tfidf_test, y_test)
+    elif classifier == 'Multilayer Perceptron':
+        classificate_mlp(tfidf_train, tfidf_test, y_test)
+    else:
+        classificate_svm(tfidf_train, tfidf_test, y_test)
+
+
 def classificate_svm(tfidf_train: sp.sparse.csr.csr_matrix, tfidf_test: sp.sparse.csr.csr_matrix, labels_names):
     # Define a Support Vector Machine classifier
     svm_clf = SVC(C=1000, gamma=0.001, kernel='sigmoid')
@@ -214,7 +229,7 @@ def classificate_svm(tfidf_train: sp.sparse.csr.csr_matrix, tfidf_test: sp.spars
     df = pd.DataFrame(report).transpose()
     df
     # Print Confusion Matrix
-    plot_confusion_matrix(svm_clf, tfidf_test, y_test)
+    # plot_confusion_matrix(svm_clf, tfidf_test, y_test)
 
 
 def classificate_rf(tfidf_train: sp.sparse.csr.csr_matrix, tfidf_test: sp.sparse.csr.csr_matrix, labels_names):
@@ -232,7 +247,7 @@ def classificate_rf(tfidf_train: sp.sparse.csr.csr_matrix, tfidf_test: sp.sparse
     df = pd.DataFrame(report).transpose()
     df
     # Print Confusion Matrix
-    plot_confusion_matrix(rf_clf, tfidf_test, y_test)
+    # plot_confusion_matrix(rf_clf, tfidf_test, y_test)
 
 
 def classificate_nb(tfidf_train: sp.sparse.csr.csr_matrix, tfidf_test: sp.sparse.csr.csr_matrix, labels_names):
@@ -248,7 +263,7 @@ def classificate_nb(tfidf_train: sp.sparse.csr.csr_matrix, tfidf_test: sp.sparse
     df = pd.DataFrame(report).transpose()
     df
     # Print Confusion Matrix
-    plot_confusion_matrix(mnb_clf, tfidf_test, y_test)
+    # plot_confusion_matrix(mnb_clf, tfidf_test, y_test)
 
 
 def classificate_mlp(tfidf_train: sp.sparse.csr.csr_matrix, tfidf_test: sp.sparse.csr.csr_matrix, labels_names):
@@ -265,7 +280,7 @@ def classificate_mlp(tfidf_train: sp.sparse.csr.csr_matrix, tfidf_test: sp.spars
     df = pd.DataFrame(report).transpose()
     df
     # Print Confusion Matrix
-    plot_confusion_matrix(mlp_clf, tfidf_test, y_test)
+    # plot_confusion_matrix(mlp_clf, tfidf_test, y_test)
 
 # ----------------------------------------------------------------------------------------------------
 
@@ -309,18 +324,22 @@ tfidf_train, tfidf_test, tfidf = apply_tfidf(X_train, X_test, X)
 st.title("Visualização")
 
 st.subheader("Word Cloud x Category")
-category = st.selectbox('Selecione a categoria', label_names)
+category = st.selectbox('Selecione uma categoria:', label_names)
 wordcloud_by_category(preprocessed_df, category)
 
 st.subheader("Gráficos de dispersão")
 techniques_names = ["t-SNE", "PCA", "MDS"]
 technique = st.selectbox(
-    'Selecione a técnica de redução de dimensionalidade', techniques_names)
+    'Selecione uma técnica de redução de dimensionalidade:', techniques_names)
 # visualization_by_technique(tfidf, technique)
 
 st.title("Classificação")
-st.subheader("SVM")
+classifier_names = ["SVM", "Random Forest",
+                    "Naive Bayes", "Multilayer Perceptron"]
+classifier = st.selectbox(
+    'Selecione um classificador:', classification_names)
 classificate_svm(tfidf_train, tfidf_test, y)
+# classification_by_classifier(classifier, tfidf_train, tfidf_test, y)
 
 st.title("Descubra a categoria da sua notícia")
 news_input = st.text_area("Digite abaixo uma notícia", '')
