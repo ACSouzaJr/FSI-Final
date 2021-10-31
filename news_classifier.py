@@ -30,13 +30,16 @@ import nltk
 nltk.download('punkt')
 nltk.download('wordnet')
 
-
 warnings.filterwarnings("ignore")
 
+# Read data
 
-@st.cache
+
+@st.cache(suppress_st_warning=True)
 def read_data(file_path: str):
     return pd.read_json(file_path, lines=True)
+
+# Preprocessing
 
 
 def select_categories(dataset: pd.DataFrame, categories: List[str]):
@@ -45,34 +48,18 @@ def select_categories(dataset: pd.DataFrame, categories: List[str]):
     return filtered_dataset
 
 
-def plot_by_category(dataset: pd.DataFrame, category: List[str]):
-    plt.title('Amount of News Based On Category')
-    plt.xticks(rotation=90)
-    fig = sns.countplot(data=dataset[list(category)], x='category')
-    st.pyplot(fig.figure)
+@st.cache(suppress_st_warning=True)
+def preprocessing(dataset: pd.DataFrame, entire_dataset: bool):
+    if entire_dataset:
+        # Drop unused columns
+        df = dataset.drop(columns=['link', 'date', 'authors'], errors='ignore')
+        # Join headline and short description
+        text_data = df.apply(lambda row: row.headline +
+                             '. ' + row.short_description, axis=1)
+    else:
+        # Convert to lower case
+        text_data = dataset[0]
 
-
-def wordcloud_by_category(dataset: pd.DataFrame, category: List[str]):
-    selected_df = dataset[dataset['category'] == category]
-    text = " ".join(selected_df['text'].to_numpy())
-    # Create and generate a word cloud image:
-    wordcloud = WordCloud(stopwords=set(STOPWORDS), max_font_size=100,
-                          max_words=100, width=1000, height=328, background_color="white").generate(text)
-    # Display the generated image:
-    fig, ax = plt.subplots()
-    plt.figure(figsize=[20, 5])
-    ax.imshow(wordcloud, interpolation='bilinear')
-    ax.axis("off")
-    st.pyplot(fig)
-
-
-@st.cache
-def preprocessing(dataset: pd.DataFrame):
-    # Drop unused columns
-    df = dataset.drop(columns=['link', 'date', 'authors'])
-    # Join headline and short description
-    text_data = df.apply(lambda row: row.headline +
-                         '. ' + row.short_description, axis=1)
     # Convert to lower case
     text_data = [text.lower() for text in text_data]
     # Strip all punctuation
@@ -86,10 +73,11 @@ def preprocessing(dataset: pd.DataFrame):
     # Convert tokens to sentences
     text_data = [TreebankWordDetokenizer().detokenize(text)
                  for text in text_data]
+    text_data
     return text_data
 
 
-@st.cache
+@st.cache(suppress_st_warning=True, allow_output_mutation=True)
 def apply_tfidf(x_train: pd.DataFrame, x_test: pd.DataFrame, data_text: pd.DataFrame):
     # Convert data into a matrix of TF-IDF features
     vectorizer = TfidfVectorizer(stop_words='english')
@@ -108,8 +96,45 @@ def split_dataset(data_text: pd.DataFrame, y: pd.core.series.Series):
         data_text, y, test_size=0.25, random_state=0)
     return x_train, x_test, y_train, y_test
 
+# Plot categories graph
 
-@st.cache
+
+@st.cache(suppress_st_warning=True)
+def plot_by_category(dataset: pd.DataFrame, category: List[str]):
+    plt.title('Amount of News Based On Category')
+    plt.xticks(rotation=90)
+    fig = sns.countplot(data=dataset[list(category)], x='category')
+    st.pyplot(fig.figure)
+
+# Plot wordcloud
+
+
+def wordcloud_by_category(dataset: pd.DataFrame, category: List[str]):
+    selected_df = dataset[dataset['category'] == category]
+    text = " ".join(selected_df['text'].to_numpy())
+    # Create and generate a word cloud image:
+    wordcloud = WordCloud(stopwords=set(STOPWORDS), max_font_size=100,
+                          max_words=100, width=1000, height=328, background_color="white").generate(text)
+    # Display the generated image:
+    fig, ax = plt.subplots()
+    plt.figure(figsize=[20, 5])
+    ax.imshow(wordcloud, interpolation='bilinear')
+    ax.axis("off")
+    st.pyplot(fig)
+
+
+# Visualization - Scatter plot
+def visualization_by_technique(tfidf: sp.sparse.csr.csr_matrix, technique: str):
+    if technique == 'PCA':
+        generate_pca_visualization(tfidf)
+    elif technique == 'MDS':
+        generate_mds_visualization(tfidf)
+    else:
+        generate_tsne_visualization(tfidf)
+
+# @st.cache(suppress_st_warning=True)
+
+
 def generate_tsne_visualization(tfidf: sp.sparse.csr.csr_matrix):
     tsne_tfidf = TSNE(n_components=2, learning_rate=100,
                       perplexity=40).fit_transform(tfidf)
@@ -121,8 +146,9 @@ def generate_tsne_visualization(tfidf: sp.sparse.csr.csr_matrix):
     fig = sns.scatterplot(data=data_text, x='x', y='y', hue='label')
     st.pyplot(fig.figure)
 
+# @st.cache(suppress_st_warning=True)
 
-@st.cache
+
 def generate_pca_visualization(tfidf: sp.sparse.csr.csr_matrix):
     not_sparse_tfidf = TruncatedSVD(
         n_components=2, n_iter=7).fit_transform(tfidf)
@@ -135,8 +161,9 @@ def generate_pca_visualization(tfidf: sp.sparse.csr.csr_matrix):
     fig = sns.scatterplot(data=data_text, x='x', y='y', hue='label')
     st.pyplot(fig.figure)
 
+# @st.cache(suppress_st_warning=True)
 
-@st.cache
+
 def generate_mds_visualization(tfidf: sp.sparse.csr.csr_matrix):
     mds_tfidf = MDS(n_components=2).fit_transform(tfidf.toarray())
     st.write('Silhouette Score:', silhouette_score(mds_tfidf, y))
@@ -147,11 +174,24 @@ def generate_mds_visualization(tfidf: sp.sparse.csr.csr_matrix):
     fig = sns.scatterplot(data=data_text, x='x', y='y', hue='label')
     st.pyplot(fig.figure)
 
+# Classification
+
 
 def plot_confusion_matrix(classifier, X_test, y_test):
     disp = ConfusionMatrixDisplay.from_estimator(
         classifier, X_test, y_test, display_labels=classifier.classes_, cmap=plt.cm.Blues)
     st.pyplot(disp.figure_)
+
+
+@st.cache(suppress_st_warning=True)
+def classificate_svm_news_input(tfidf_train: sp.sparse.csr.csr_matrix, tfidf_test: sp.sparse.csr.csr_matrix, label_names, y_train):
+    # Define a Support Vector Machine classifier
+    svm_clf = SVC(C=1000, gamma=0.001, kernel='sigmoid')
+    # Apply SVM
+    svm_clf.fit(tfidf_train, y_train)
+    # Predict labels using test data
+    y_pred = svm_clf.predict(tfidf_test)
+    st.write('A notícia escolhida pertence à categoria ', y_pred[0], '.')
 
 
 def classificate_svm(tfidf_train: sp.sparse.csr.csr_matrix, tfidf_test: sp.sparse.csr.csr_matrix, labels_names):
@@ -226,16 +266,17 @@ def classificate_mlp(tfidf_train: sp.sparse.csr.csr_matrix, tfidf_test: sp.spars
 DATASET_FILE_PATH = 'dataset/News_Category_Dataset_v2.json'
 
 # Read Data
+st.title("Informações do dataset")
 raw_df = read_data(DATASET_FILE_PATH)
 categories = raw_df['category'].unique()
-st.write(f"Número de classes totais no dataset {len(categories)}")
+st.write(f"Número de classes totais no dataset: {len(categories)}")
 categories
 
 # Category/label selection
 label_names = ['WORLD NEWS', 'ARTS & CULTURE', 'SCIENCE', 'TECH']
 filtered_df = select_categories(raw_df, label_names)
 
-st.write("Primeiros 5 registros")
+st.write("Primeiros 5 registros:")
 st.write(filtered_df.head())
 st.write(
     "Para classificação iremos utilizar apenas as colunas ['headline', 'short_description']")
@@ -246,7 +287,7 @@ fig = sns.countplot(data=raw_df, x='category', color='purple')
 st.pyplot(fig.figure)
 
 # Preprocessing
-X = preprocessing(filtered_df)
+X = preprocessing(filtered_df, True)
 y = filtered_df['category'].to_numpy()
 preprocessed_df = pd.DataFrame({'text': X, 'category': y})
 
@@ -259,16 +300,33 @@ X_train, X_test, y_train, y_test = split_dataset(X, y)
 tfidf_train, tfidf_test, tfidf = apply_tfidf(X_train, X_test, X)
 
 st.title("Visualização")
-st.subheader("TSNE")
-generate_tsne_visualization(tfidf)
 
 st.subheader("Word Cloud x Category")
 category = st.selectbox('Selecione a categoria', label_names)
 wordcloud_by_category(preprocessed_df, category)
 
-# user_input = st.text_area("Noticia", '')
+st.subheader("Gráficos de dispersão")
+techniques_names = ["t-SNE", "PCA", "MDS"]
+technique = st.selectbox(
+    'Selecione a técnica de redução de dimensionalidade', techniques_names)
+visualization_by_technique(tfidf, technique)
 
 st.title("Classificação")
 st.subheader("SVM")
-
 classificate_svm(tfidf_train, tfidf_test, y)
+
+st.title("Descubra a categoria da sua notícia")
+news_input = st.text_area("Digite abaixo uma notícia", '')
+news_input = pd.DataFrame({news_input})
+
+if st.button('Classificar'):
+    preprocessed_news_input = preprocessing(news_input, False)
+    preprocessed_news_input_df = pd.DataFrame(
+        {'text': preprocessed_news_input})
+    vectorizer = TfidfVectorizer(stop_words='english')
+    tfidf = vectorizer.fit_transform(X)
+    vectorizer.fit(X)
+    tfidf_news = vectorizer.transform(preprocessed_news_input_df)
+    # preprocessed_news_input_df
+    # tfidf_news
+    classificate_svm_news_input(tfidf, tfidf_news, label_names, y)
