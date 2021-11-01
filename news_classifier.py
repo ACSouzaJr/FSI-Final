@@ -1,8 +1,6 @@
 import warnings
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.model_selection import train_test_split
-from nltk.tokenize.treebank import TreebankWordDetokenizer
-from nltk.stem import LancasterStemmer, WordNetLemmatizer
 from typing import List
 import streamlit as st
 
@@ -11,6 +9,9 @@ from classification import classificate_svm, classificate_svm_news_input, classi
 
 # Visualization
 from visualization import visualization_by_technique, wordcloud_by_category
+
+# Pre processing
+from preprocessing import prepare_dataset, preprocessing
 
 import pandas as pd
 import string
@@ -44,34 +45,6 @@ def select_categories(dataset: pd.DataFrame, categories: List[str]):
 def limit_samples_of_each_category(dataset: pd.DataFrame):
     dataset = dataset.groupby('category').apply(lambda x: x.sample(200))
     return dataset
-
-
-@st.cache(suppress_st_warning=True)
-def preprocessing(dataset: pd.DataFrame, entire_dataset: bool):
-    if entire_dataset:
-        # Drop unused columns
-        df = dataset.drop(columns=['link', 'date', 'authors'], errors='ignore')
-        # Join headline and short description
-        text_data = df.apply(lambda row: row.headline +
-                             '. ' + row.short_description, axis=1)
-    else:
-        # Convert to lower case
-        text_data = dataset[0]
-
-    # Convert to lower case
-    text_data = [text.lower() for text in text_data]
-    # Strip all punctuation
-    table = str.maketrans('', '', string.punctuation)
-    text_data = [text.translate(table) for text in text_data]
-    # Convert text to tokens
-    text_data = [nltk.word_tokenize(text) for text in text_data]
-    # Lemmatizing
-    text_data = [[WordNetLemmatizer().lemmatize(word, 'n')
-                  for word in text] for text in text_data]
-    # Convert tokens to sentences
-    text_data = [TreebankWordDetokenizer().detokenize(text)
-                 for text in text_data]
-    return text_data
 
 
 def split_dataset(data_text: pd.DataFrame, y: pd.core.series.Series):
@@ -114,13 +87,19 @@ st.write(filtered_df.head())
 st.write(
     "Para classificação iremos utilizar apenas as colunas ['headline', 'short_description']")
 
+## Exploração dos dados
+
 plt.title('Quantidade de notícias por categoria')
 plt.xticks(rotation=90)
 fig = sns.countplot(data=raw_df, x='category', color='purple')
 st.pyplot(fig.figure)
 
+# ----------------------------------------------------------------------------------------------------
+
 # Preprocessing
-X = preprocessing(filtered_df, True)
+X = prepare_dataset(filtered_df)
+X
+X = preprocessing(X, True)
 y = filtered_df['category'].to_numpy()
 preprocessed_df = pd.DataFrame({'text': X, 'category': y})
 
@@ -132,6 +111,8 @@ X_train, X_test, y_train, y_test = split_dataset(X, y)
 # Convert to tf-idf
 tfidf_train, tfidf_test, tfidf = apply_tfidf(X_train, X_test, X)
 
+# ----------------------------------------------------------------------------------------------------
+
 st.title("Visualização")
 
 st.subheader("Word Cloud x Category")
@@ -139,10 +120,12 @@ category = st.selectbox('Selecione uma categoria:', label_names)
 wordcloud_by_category(preprocessed_df, category)
 
 st.subheader("Gráficos de dispersão")
-techniques_names = ["t-SNE", "PCA", "MDS"]
+techniques_names = ["PCA", "t-SNE", "MDS"]
 technique = st.selectbox(
     'Selecione uma técnica de redução de dimensionalidade:', techniques_names)
-# visualization_by_technique(tfidf, technique)
+visualization_by_technique(tfidf, technique, label_names=y)
+
+# ----------------------------------------------------------------------------------------------------
 
 st.title("Classificação")
 classifier_names = ["SVM", "Random Forest",
@@ -153,17 +136,19 @@ st.subheader(classifier)
 classificate_svm(tfidf_train, tfidf_test, y_train, y_test)
 # classification_by_classifier(classifier, tfidf_train, tfidf_test, y)
 
+
 st.title("Descubra a categoria da sua notícia")
 news_input = st.text_area("Digite abaixo uma notícia", '')
-news_input = pd.DataFrame({news_input})
+news_input_df = pd.DataFrame({"text": news_input})
 
-if st.button('Classificar'):
+if st.button('Classificar') and len(news_input.strip()) > 0:
     # Preprocessing
     limited_df = limit_samples_of_each_category(raw_df)
-    X_news = preprocessing(limited_df, True)
+    X_news = prepare_dataset(limited_df)
+    X_news = preprocessing(X_news, True)
     y_news = limited_df['category'].to_numpy()
     preprocessed_df = pd.DataFrame({'text': X_news, 'category': y_news})
-    preprocessed_news_input = preprocessing(news_input, False)
+    preprocessed_news_input = preprocessing(news_input_df, False)
 
     # Data spliting
     X_train_news, X_test_news, y_train_news, y_test_news = split_dataset(
