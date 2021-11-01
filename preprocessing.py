@@ -68,7 +68,7 @@ def prepare_dataset(dataset):
   return df
 
 @st.cache(suppress_st_warning=True)
-def preprocessing(dataset: pd.DataFrame, entire_dataset: bool):
+def preprocessing(dataset: pd.DataFrame):
     
   text_data = dataset['text'].values
   text_data = convert_lower_case(text_data)

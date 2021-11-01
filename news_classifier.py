@@ -5,19 +5,18 @@ from typing import List
 import streamlit as st
 
 # Classification
-from classification import classificate_svm, classificate_svm_news_input, classificate_mlp, classificate_nb, classificate_rf
+from classification import classificate_svm, classification_by_classifier
 
 # Visualization
-from visualization import visualization_by_technique, wordcloud_by_category
+from visualization import visualization_by_technique, wordcloud_by_category, plot_all_categories
 
 # Pre processing
 from preprocessing import prepare_dataset, preprocessing
 
 import pandas as pd
-import string
-
 import seaborn as sns
 import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
 
 import nltk
 nltk.download('punkt')
@@ -26,24 +25,31 @@ nltk.download('wordnet')
 warnings.filterwarnings("ignore")
 
 # Read data
-
-
 @st.cache(suppress_st_warning=True)
 def read_data(file_path: str):
     return pd.read_json(file_path, lines=True)
 
+
 # Preprocessing
-
-
 def select_categories(dataset: pd.DataFrame, categories: List[str]):
-    filtered_dataset = dataset[dataset['category'].isin(categories)]
-    filtered_dataset.reset_index(drop=True, inplace=True)
+    # seleciona apenas texto mais de 12 palavras
+    filter_df = dataset[dataset['text_length'] > 12]
+    filter_df = filter_df.reset_index(drop=True)
+
+    # Seleciona apenas as 5 maiores categorias
+    filter_df = filter_df[filter_df['category'].isin(categories)]
+    filter_df.reset_index(drop=True, inplace=True)
+
+    # Seleciona 1000 amostras de cada classe
+    filtered_dataset = limit_samples_of_each_category(filter_df, 1000)
+
     return filtered_dataset
 
 
 @st.cache(suppress_st_warning=True)
-def limit_samples_of_each_category(dataset: pd.DataFrame):
-    dataset = dataset.groupby('category').apply(lambda x: x.sample(200))
+def limit_samples_of_each_category(dataset: pd.DataFrame, quantity: int):
+    dataset = dataset.groupby('category').apply(lambda x: x.sample(quantity))
+    dataset = dataset.reset_index(drop=True)
     return dataset
 
 
@@ -54,7 +60,7 @@ def split_dataset(data_text: pd.DataFrame, y: pd.core.series.Series):
     return x_train, x_test, y_train, y_test
 
 
-@st.cache(suppress_st_warning=True, allow_output_mutation=True)
+#@st.cache(suppress_st_warning=True, allow_output_mutation=True)
 def apply_tfidf(x_train: pd.DataFrame, x_test: pd.DataFrame, data_text: pd.DataFrame):
     # Convert data into a matrix of TF-IDF features
     vectorizer = TfidfVectorizer(stop_words='english')
@@ -64,7 +70,7 @@ def apply_tfidf(x_train: pd.DataFrame, x_test: pd.DataFrame, data_text: pd.DataF
     tfidf_test = vectorizer.transform(x_test)
     # For visualization
     tfidf = vectorizer.fit_transform(data_text)
-    return tfidf_train, tfidf_test, tfidf
+    return tfidf_train, tfidf_test, tfidf, vectorizer
 
 # ----------------------------------------------------------------------------------------------------
 
@@ -72,51 +78,125 @@ def apply_tfidf(x_train: pd.DataFrame, x_test: pd.DataFrame, data_text: pd.DataF
 DATASET_FILE_PATH = 'dataset/News_Category_Dataset_v2.json'
 
 # Read Data
-st.title("Informações do dataset")
+st.title("Classificação de Noticias em Categorias")
 raw_df = read_data(DATASET_FILE_PATH)
+
+# Apresentação
 categories = raw_df['category'].unique()
-st.write(f"Número de classes totais no dataset: {len(categories)}")
+st.markdown(f"O conjunto de dados utilizado foi o [`News Category Dataset`](https://www.kaggle.com/rmisra/news-category-dataset) disponibilizado na plataforma Kaggle. Essa base de dados contém 200k notícias, com o título e uma pequena descrição, coletadas no período de 2012 a 2018 obtidos do [`HuffPost`](https://www.huffingtonpost.com/). Cada notícia pertence a uma categoria dentre as  {len(categories)} categorias disponíveis.")
+
+# Amostra
+"Abaixo é possivel ver uma amostra dos dados da base de dados."
+st.dataframe(raw_df.head())
+
+"Para classificação das noticias iremos utilizar apenas as colunas `headline` e `short_description`."
+raw_df = prepare_dataset(raw_df)
+
+# Categorias
+"As categorias existentes na Base da Dados são:"
 categories
 
+st.subheader("Análise das categorias")
+## Plot de categorias
+plot_all_categories(raw_df, color='purple')
+
+
+"Para reduzir o número de classes da base de dados primeiramente agrupamos os temas parecidos. Reduzindo para 25 categorias"
+## Group similar categories
+raw_df['category']=raw_df['category'].replace({
+    "HEALTHY LIVING": "WELLNESS",
+    "QUEER VOICES": "GROUPS VOICES",
+    "BUSINESS": "BUSINESS & FINANCES",
+    "PARENTS": "PARENTING",
+    "BLACK VOICES": "GROUPS VOICES",
+    "THE WORLDPOST": "WORLD NEWS",
+    "STYLE": "STYLE & BEAUTY",
+    "GREEN": "ENVIRONMENT",
+    "TASTE": "FOOD & DRINK",
+    "WORLDPOST": "WORLD NEWS",
+    "SCIENCE": "SCIENCE & TECH",
+    "TECH": "SCIENCE & TECH",
+    "MONEY": "BUSINESS & FINANCES",
+    "ARTS": "ARTS & CULTURE",
+    "COLLEGE": "EDUCATION",
+    "LATINO VOICES": "GROUPS VOICES",
+    "CULTURE & ARTS": "ARTS & CULTURE",
+    "FIFTY": "MISCELLANEOUS",
+    "COMEDY": "ENTERTAINMENT",
+    "GOOD NEWS": "MISCELLANEOUS"
+})
+
+category_changes = pd.DataFrame(
+    [["HEALTHY LIVING", "WELLNESS"],
+    ["QUEER VOICES", "GROUPS VOICES"],
+    ["BUSINESS", "BUSINESS & FINANCES"],
+    ["PARENTS", "PARENTING"],
+    ["BLACK VOICES", "GROUPS VOICES"],
+    ["THE WORLDPOST", "WORLD NEWS"],
+    ["STYLE", "STYLE & BEAUTY"],
+    ["GREEN", "ENVIRONMENT"],
+    ["TASTE", "FOOD & DRINK"],
+    ["WORLDPOST", "WORLD NEWS"],
+    ["SCIENCE", "SCIENCE & TECH"],
+    ["TECH", "SCIENCE & TECH"],
+    ["MONEY", "BUSINESS & FINANCES"],
+    ["ARTS", "ARTS & CULTURE"],
+    ["COLLEGE", "EDUCATION"],
+    ["LATINO VOICES", "GROUPS VOICES"],
+    ["CULTURE & ARTS", "ARTS & CULTURE"],
+    ["FIFTY", "MISCELLANEOUS"],
+    ["COMEDY", "ENTERTAINMENT"],
+    ["GOOD NEWS", "MISCELLANEOUS"]]
+)
+
+category_changes.columns = ["Original", "Nova Categoria"]
+category_changes
+
+"Categorias após o agrupamento:"
+categories = raw_df['category'].unique()
+categories
+
+"Em seguida removemos as noticias em que os textos possuiam menos de 12 palavras"
+"25% da base de dados possui text com 12 palavras ou menos."
+raw_df['text_length'] = raw_df['text'].apply(lambda x : len(x.split()))
+dist_category_df = raw_df.groupby('category').text_length.describe()
+st.dataframe(dist_category_df.style.highlight_min(subset=['25%']))
+
+"Por fim selecionamos 1000 amostras das 6 classes que possuem a maior quantidade de noticias. (Undersample)"
 # Category/label selection
-label_names = ['WORLD NEWS', 'ARTS & CULTURE', 'SCIENCE', 'TECH']
-filtered_df = select_categories(raw_df, label_names)
+categories = ['ENTERTAINMENT', 'GROUPS VOICES', 'PARENTING', 'POLITICS', 'STYLE & BEAUTY', 'WELLNESS']
+filtered_df = select_categories(raw_df, categories)
 
-st.write("Primeiros 5 registros:")
-st.write(filtered_df.head())
-st.write(
-    "Para classificação iremos utilizar apenas as colunas ['headline', 'short_description']")
+plot_all_categories(filtered_df, color='red')
 
-## Exploração dos dados
-
-plt.title('Quantidade de notícias por categoria')
-plt.xticks(rotation=90)
-fig = sns.countplot(data=raw_df, x='category', color='purple')
-st.pyplot(fig.figure)
+plt.title("Tamanho de texto por categoria")
+ax = sns.histplot(data=filtered_df, x="text_length", binwidth=5, hue="category", multiple="stack")
+ax.xaxis.set_major_locator(ticker.MultipleLocator(10))
+ax.xaxis.set_major_formatter(ticker.ScalarFormatter())
+st.pyplot(ax.figure)
+plt.clf()
 
 # ----------------------------------------------------------------------------------------------------
-
+"Em seguida foi realizado o preprocessamento no texto de cada noticia:"
 # Preprocessing
-X = prepare_dataset(filtered_df)
-X
-X = preprocessing(X, True)
-y = filtered_df['category'].to_numpy()
+X = preprocessing(filtered_df)
+y = filtered_df['category'].values
 preprocessed_df = pd.DataFrame({'text': X, 'category': y})
 
-st.write(preprocessed_df.head())
+st.dataframe(preprocessed_df.head())
 
 # Data spliting
 X_train, X_test, y_train, y_test = split_dataset(X, y)
 
 # Convert to tf-idf
-tfidf_train, tfidf_test, tfidf = apply_tfidf(X_train, X_test, X)
+tfidf_train, tfidf_test, tfidf, tfidf_vectorizer = apply_tfidf(X_train, X_test, X)
 
 # ----------------------------------------------------------------------------------------------------
 
 st.title("Visualização")
 
 st.subheader("Word Cloud x Category")
-category = st.selectbox('Selecione uma categoria:', label_names)
+category = st.selectbox('Selecione uma categoria:', categories)
 wordcloud_by_category(preprocessed_df, category)
 
 st.subheader("Gráficos de dispersão")
@@ -133,33 +213,22 @@ classifier_names = ["SVM", "Random Forest",
 classifier = st.selectbox(
     'Selecione um classificador:', classifier_names)
 st.subheader(classifier)
-classificate_svm(tfidf_train, tfidf_test, y_train, y_test)
-# classification_by_classifier(classifier, tfidf_train, tfidf_test, y)
+#classificate_svm(tfidf_train, tfidf_test, y_train, y_test)
+model = classification_by_classifier(classifier, tfidf_train, tfidf_test, y_train, y_test)
 
 
 st.title("Descubra a categoria da sua notícia")
-news_input = st.text_area("Digite abaixo uma notícia", '')
-news_input_df = pd.DataFrame({"text": news_input})
+news_input = st.text_area("Digite abaixo uma notícia", """ Pete Buttigieg Spends Halloween In Hospital With Son Gus Dressed As Traffic Cone. Chasten Buttigieg wrote that baby Gus "has been having a rough go of it. """)
 
-if st.button('Classificar') and len(news_input.strip()) > 0:
+if len(news_input.strip()) > 12: #st.button('Classificar') and 
     # Preprocessing
-    limited_df = limit_samples_of_each_category(raw_df)
-    X_news = prepare_dataset(limited_df)
-    X_news = preprocessing(X_news, True)
-    y_news = limited_df['category'].to_numpy()
-    preprocessed_df = pd.DataFrame({'text': X_news, 'category': y_news})
-    preprocessed_news_input = preprocessing(news_input_df, False)
-
-    # Data spliting
-    X_train_news, X_test_news, y_train_news, y_test_news = split_dataset(
-        X_news, y_news)
+    news_input_df = pd.DataFrame({'text': [news_input]})
+    preprocessed_news_input = preprocessing(news_input_df)
 
     # Tf-idf
-    vectorizer = TfidfVectorizer(stop_words='english')
-    vectorizer.fit(X_train_news)
-    tfidf_train_news = vectorizer.transform(X_train_news)
-    tfidf_test_news_input = vectorizer.transform(preprocessed_news_input)
+    tfidf_news_input = tfidf_vectorizer.transform(preprocessed_news_input)
 
     # Classification
-    classificate_svm_news_input(
-        tfidf_train_news, tfidf_test_news_input, y_train_news)
+    # Predict labels using test data
+    y_pred = model.predict(tfidf_news_input)
+    st.write('A notícia escolhida pertence à categoria ', y_pred[0], '.')
