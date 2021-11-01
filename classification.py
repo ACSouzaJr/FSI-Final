@@ -28,7 +28,7 @@ def plot_confusion_matrix(classifier, X_test, y_test):
 
 
 @st.cache(suppress_st_warning=True)
-def classificate_svm_news_input(tfidf_train: sp.sparse.csr.csr_matrix, tfidf_test: sp.sparse.csr.csr_matrix, y_train, y_test):
+def classificate_svm_news_input(tfidf_train: sp.sparse.csr.csr_matrix, tfidf_test: sp.sparse.csr.csr_matrix, y_train):
     # Define a Support Vector Machine classifier
     svm_clf = SVC(C=1000, gamma=0.001, kernel='sigmoid')
     # Apply SVM

@@ -60,16 +60,18 @@ def split_dataset(data_text: pd.DataFrame, y: pd.core.series.Series):
     return x_train, x_test, y_train, y_test
 
 
-#@st.cache(suppress_st_warning=True, allow_output_mutation=True)
+@st.cache(suppress_st_warning=True, allow_output_mutation=True)
 def apply_tfidf(x_train: pd.DataFrame, x_test: pd.DataFrame, data_text: pd.DataFrame):
     # Convert data into a matrix of TF-IDF features
     vectorizer = TfidfVectorizer(stop_words='english')
+
+    # For visualization
+    tfidf = vectorizer.fit_transform(data_text)
+
     # For classification
     vectorizer.fit(x_train)
     tfidf_train = vectorizer.transform(x_train)
     tfidf_test = vectorizer.transform(x_test)
-    # For visualization
-    tfidf = vectorizer.fit_transform(data_text)
     return tfidf_train, tfidf_test, tfidf, vectorizer
 
 # ----------------------------------------------------------------------------------------------------

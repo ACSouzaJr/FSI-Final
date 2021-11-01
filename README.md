@@ -37,7 +37,7 @@ Run: `streamlit run news_classifier.py`
 
 ### Conjunto de dados
 
-O conjunto de dados utilizado foi o [`News Category Dataset`](https://www.kaggle.com/rmisra/news-category-dataset) disponibilizado na plataforma Kaggle. Esse dataset contém 200k títulos e uma pequena descrição de notícias coletadas no período de 2012 a 2018 obtidos do [`HuffPost`](https://www.huffingtonpost.com/). Cada notícia pertence uma categoria dentre as 41 categorias disponíveis.
+O conjunto de dados utilizado foi o [`News Category Dataset`](https://www.kaggle.com/rmisra/news-category-dataset) disponibilizado na plataforma Kaggle. Essa base de dados contém 200k notícias, com o título e uma pequena descrição, coletadas no período de 2012 a 2018 obtidos do [`HuffPost`](https://www.huffingtonpost.com/). Cada notícia pertence a uma categoria dentre as 41 categorias disponíveis.
 
 ### Preprocessamento
 
@@ -67,6 +67,7 @@ Visualizações ocorrem com os algoritmos em 2 momentos:
 Para a realização da última visualização, é necessário reduzir o espaço de características para duas dimensões. Com este objetivo, foram utilizadas as seguintes técnicas: `PCA`, `TSE`, `MDS`.
 
 ### Classificação
+
 #### Geral
 
 Após a extração de características, foram utilizados os modelos de aprendizado de máquina clássicos para classificar as notícias. Os modelos que foram utilizados foram os seguintes:
@@ -82,12 +83,15 @@ Os modelos foram treinados e em seguida testados, a forma de avaliação utiliza
 
 Além da classificação geral, também foi criada a classificação específica, que tem o objetivo de classificar um uma notícia escolhida previamente pelo usuário. Para isso, foi utilizado o classificador `SVM`, o que obteve melhores resultados na etapa anterior.
 
-A notícia escolhida pode ser classificada em uma das 25 categorias. Com o objetivo de diminuir o tempo de processamento, foram utilizadas 200 instâncias de cada uma das categorias.
+A notícia escolhida pode ser classificada em uma das 25 categorias. Com o objetivo de diminuir o tempo de processamento, foram utilizadas 1000 instâncias de cada uma das categorias.
 
 ## Resultados experimentais
+
 Na classificação, pode-se notar que o classificador `SVM` demonstrou um melhor resultado de acordo com a métrica `f1 score`. Na visualização, notou-se que a técnica de redução de dimensionalidade `t-SNE` demonstrou uma melhor disposição de pontos no layout, de acordo com o coeficiente de silhoueta.
 
 ## Referências
+
 https://www.kaggle.com/rmisra/news-category-dataset/code
 https://scikit-learn.org/stable/index.html
 https://www.nltk.org/
+https://towardsdatascience.com/your-guide-to-natural-language-processing-nlp-48ea2511f6e1
