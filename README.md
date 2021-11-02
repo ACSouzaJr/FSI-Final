@@ -8,6 +8,7 @@
 - Especificação dos casos de uso
 - Metodologia
 - Resultados experimentais
+- Deploy
 - Referências
 
 ## Objetivo
@@ -92,6 +93,9 @@ A notícia escolhida pode ser classificada em uma das 25 categorias. Com o objet
 ## Resultados experimentais
 
 Na classificação, pode-se notar que os classificadores `Random Forest` e `SVM` demonstraram melhores resultados de acordo com a métrica `f1 score`. Na visualização, notou-se que a técnica de redução de dimensionalidade `t-SNE` demonstrou uma melhor disposição de pontos no layout, de acordo com o coeficiente de silhoueta.
+
+## Deploy
+https://share.streamlit.io/acsouzajr/fsi-final/main/news_classifier.py
 
 ## Referências
 
