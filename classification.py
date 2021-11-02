@@ -1,4 +1,4 @@
-from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
+from sklearn.metrics import ConfusionMatrixDisplay
 from sklearn.metrics import classification_report
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.naive_bayes import MultinomialNB
@@ -12,15 +12,15 @@ import scipy as sp
 import matplotlib.pyplot as plt
 
 
-def classification_by_classifier(classifier: str, tfidf_train: sp.sparse.csr.csr_matrix, tfidf_test: sp.sparse.csr.csr_matrix, y_train, y_test):
+def classification_by_classifier(classifier: str, tfidf_train, tfidf_test, y_train, y_test):
     if classifier == 'Random Forest':
-        classificate_rf(tfidf_train, tfidf_test, y_train, y_test)
+        return classificate_rf(tfidf_train, tfidf_test, y_train, y_test)
     elif classifier == 'Naive Bayes':
-        classificate_nb(tfidf_train, tfidf_test, y_train, y_test)
+        return classificate_nb(tfidf_train, tfidf_test, y_train, y_test)
     elif classifier == 'Multilayer Perceptron':
-        classificate_mlp(tfidf_train, tfidf_test, y_train, y_test)
+        return classificate_mlp(tfidf_train, tfidf_test, y_train, y_test)
     else:
-        classificate_svm(tfidf_train, tfidf_test, y_train, y_test)
+        return classificate_svm(tfidf_train, tfidf_test, y_train, y_test)
 
 
 def plot_confusion_matrix(classifier, X_test, y_test):
@@ -48,13 +48,15 @@ def classificate_svm(tfidf_train: sp.sparse.csr.csr_matrix, tfidf_test: sp.spars
     # Predict labels using test data
     y_true, y_pred = y_test, svm_clf.predict(tfidf_test)
     # Print a text report showing the main classification metrics
-    st.write('Classification report: ')
+    '### Classification report: '
+    # print('Classes: ', svm_clf.classes_)
     report = classification_report(
         y_true, y_pred, zero_division=0, output_dict=True)
     df = pd.DataFrame(report).transpose()
-    st.write(df)
+    st.dataframe(df)
     # Print Confusion Matrix
-    # plot_confusion_matrix(svm_clf, tfidf_test, y_test)
+    plot_confusion_matrix(svm_clf, tfidf_test, y_test)
+    return svm_clf
 
 
 def classificate_rf(tfidf_train: sp.sparse.csr.csr_matrix, tfidf_test: sp.sparse.csr.csr_matrix, y_train, y_test):
@@ -66,13 +68,14 @@ def classificate_rf(tfidf_train: sp.sparse.csr.csr_matrix, tfidf_test: sp.sparse
     # Predict labels using test data
     y_true, y_pred = y_test, rf_clf.predict(tfidf_test)
     # Print a text report showing the main classification metrics
-    '## Classification report: '
+    '### Classification report: '
     report = classification_report(
         y_true, y_pred, zero_division=0, output_dict=True)
     df = pd.DataFrame(report).transpose()
-    st.write(df)
+    st.dataframe(df)
     # Print Confusion Matrix
-    # plot_confusion_matrix(rf_clf, tfidf_test, y_test)
+    plot_confusion_matrix(rf_clf, tfidf_test, y_test)
+    return rf_clf
 
 
 def classificate_nb(tfidf_train: sp.sparse.csr.csr_matrix, tfidf_test: sp.sparse.csr.csr_matrix, y_train, y_test):
@@ -82,13 +85,14 @@ def classificate_nb(tfidf_train: sp.sparse.csr.csr_matrix, tfidf_test: sp.sparse
     # Predict labels using test data
     y_true, y_pred = y_test, mnb_clf.predict(tfidf_test)
     # Print a text report showing the main classification metrics
-    '## Classification report: '
+    '### Classification report: '
     report = classification_report(
         y_true, y_pred, zero_division=0, output_dict=True)
     df = pd.DataFrame(report).transpose()
-    st.write(df)
+    st.dataframe(df)
     # Print Confusion Matrix
-    # plot_confusion_matrix(mnb_clf, tfidf_test, y_test)
+    plot_confusion_matrix(mnb_clf, tfidf_test, y_test)
+    return mnb_clf
 
 
 def classificate_mlp(tfidf_train: sp.sparse.csr.csr_matrix, tfidf_test: sp.sparse.csr.csr_matrix, y_train, y_test):
@@ -99,13 +103,14 @@ def classificate_mlp(tfidf_train: sp.sparse.csr.csr_matrix, tfidf_test: sp.spars
     # Predict labels using test data
     y_true, y_pred = y_test, mlp_clf.predict(tfidf_test)
     # Print a text report showing the main classification metrics
-    '## Classification report: '
+    '### Classification report: '
     report = classification_report(
         y_true, y_pred, zero_division=0, output_dict=True)
     df = pd.DataFrame(report).transpose()
-    st.write(df)
+    st.dataframe(df)
     # Print Confusion Matrix
-    # plot_confusion_matrix(mlp_clf, tfidf_test, y_test)
+    plot_confusion_matrix(mlp_clf, tfidf_test, y_test)
+    return mlp_clf
 
 # --------------------------------------------------------------------------------
 

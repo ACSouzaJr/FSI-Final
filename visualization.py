@@ -13,6 +13,14 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from wordcloud import WordCloud, STOPWORDS
 
+
+def plot_all_categories(dataset: pd.DataFrame, color: str):
+    plt.title('Quantidade de notícias por categoria')
+    plt.xticks(rotation=90)
+    fig = sns.countplot(data=dataset, x='category', color=color)
+    st.pyplot(fig.figure)
+    plt.clf()
+
 # Plot categories graph
 
 
