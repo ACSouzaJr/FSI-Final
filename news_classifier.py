@@ -5,7 +5,7 @@ from typing import List
 import streamlit as st
 
 # Classification
-from classification import classificate_svm, classificate_svm_news_input, classificate_mlp, classificate_nb, classificate_rf
+from classification import classificate_svm_news_input, classification_by_classifier, test_hyperparams
 
 # Visualization
 from visualization import visualization_by_technique, wordcloud_by_category
@@ -87,7 +87,7 @@ st.write(filtered_df.head())
 st.write(
     "Para classificação iremos utilizar apenas as colunas ['headline', 'short_description']")
 
-## Exploração dos dados
+# Exploração dos dados
 
 plt.title('Quantidade de notícias por categoria')
 plt.xticks(rotation=90)
@@ -133,13 +133,14 @@ classifier_names = ["SVM", "Random Forest",
 classifier = st.selectbox(
     'Selecione um classificador:', classifier_names)
 st.subheader(classifier)
-classificate_svm(tfidf_train, tfidf_test, y_train, y_test)
-# classification_by_classifier(classifier, tfidf_train, tfidf_test, y)
+# classificate_svm(tfidf_train, tfidf_test, y_train, y_test)
+classification_by_classifier(
+    classifier, tfidf_train, tfidf_test, y_train, y_test)
 
 
 st.title("Descubra a categoria da sua notícia")
 news_input = st.text_area("Digite abaixo uma notícia", '')
-news_input_df = pd.DataFrame({"text": news_input})
+news_input_df = pd.DataFrame({"text": [news_input]})
 
 if st.button('Classificar') and len(news_input.strip()) > 0:
     # Preprocessing
@@ -163,3 +164,6 @@ if st.button('Classificar') and len(news_input.strip()) > 0:
     # Classification
     classificate_svm_news_input(
         tfidf_train_news, tfidf_test_news_input, y_train_news)
+
+# To test the best hyperparams
+# test_hyperparams('SVM', tfidf_train, tfidf_test, y_train, y_test)

@@ -14,6 +14,8 @@ import matplotlib.pyplot as plt
 from wordcloud import WordCloud, STOPWORDS
 
 # Plot categories graph
+
+
 @st.cache(suppress_st_warning=True)
 def plot_by_category(dataset: pd.DataFrame, category: List[str]):
     plt.title('Amount of News Based On Category')
@@ -59,6 +61,7 @@ def generate_tsne_visualization(tfidf: sp.sparse.csr.csr_matrix, label_names):
     data_text['label'] = label_names
     data_text.columns = ['x', 'y', 'label']
     plt.figure(figsize=(13, 7))
+    plt.axis('off')
     fig = sns.scatterplot(data=data_text, x='x', y='y', hue='label')
     st.pyplot(fig.figure)
 
@@ -72,6 +75,7 @@ def generate_pca_visualization(tfidf: sp.sparse.csr.csr_matrix, label_names):
     data_text['label'] = label_names
     data_text.columns = ['x', 'y', 'label']
     plt.figure(figsize=(13, 7))
+    plt.axis('off')
     fig = sns.scatterplot(data=data_text, x='x', y='y', hue='label')
     st.pyplot(fig.figure)
 
@@ -83,5 +87,6 @@ def generate_mds_visualization(tfidf: sp.sparse.csr.csr_matrix, label_names):
     data_text['label'] = label_names
     data_text.columns = ['x', 'y', 'label']
     plt.figure(figsize=(13, 7))
+    plt.axis('off')
     fig = sns.scatterplot(data=data_text, x='x', y='y', hue='label')
     st.pyplot(fig.figure)

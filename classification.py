@@ -4,21 +4,23 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.neural_network import MLPClassifier
 from sklearn.svm import SVC
+from sklearn.model_selection import GridSearchCV
 
 import streamlit as st
 import pandas as pd
 import scipy as sp
 import matplotlib.pyplot as plt
 
-def classification_by_classifier(classifier: str, tfidf_train: sp.sparse.csr.csr_matrix, tfidf_test: sp.sparse.csr.csr_matrix, y_test):
+
+def classification_by_classifier(classifier: str, tfidf_train: sp.sparse.csr.csr_matrix, tfidf_test: sp.sparse.csr.csr_matrix, y_train, y_test):
     if classifier == 'Random Forest':
-        classificate_rf(tfidf_train, tfidf_test, y_test)
+        classificate_rf(tfidf_train, tfidf_test, y_train, y_test)
     elif classifier == 'Naive Bayes':
-        classificate_nb(tfidf_train, tfidf_test, y_test)
+        classificate_nb(tfidf_train, tfidf_test, y_train, y_test)
     elif classifier == 'Multilayer Perceptron':
-        classificate_mlp(tfidf_train, tfidf_test, y_test)
+        classificate_mlp(tfidf_train, tfidf_test, y_train, y_test)
     else:
-        classificate_svm(tfidf_train, tfidf_test, y_test)
+        classificate_svm(tfidf_train, tfidf_test, y_train, y_test)
 
 
 def plot_confusion_matrix(classifier, X_test, y_test):
@@ -47,13 +49,12 @@ def classificate_svm(tfidf_train: sp.sparse.csr.csr_matrix, tfidf_test: sp.spars
     y_true, y_pred = y_test, svm_clf.predict(tfidf_test)
     # Print a text report showing the main classification metrics
     st.write('Classification report: ')
-    # print('Classes: ', svm_clf.classes_)
     report = classification_report(
         y_true, y_pred, zero_division=0, output_dict=True)
     df = pd.DataFrame(report).transpose()
-    df
+    st.write(df)
     # Print Confusion Matrix
-    plot_confusion_matrix(svm_clf, tfidf_test, y_test)
+    # plot_confusion_matrix(svm_clf, tfidf_test, y_test)
 
 
 def classificate_rf(tfidf_train: sp.sparse.csr.csr_matrix, tfidf_test: sp.sparse.csr.csr_matrix, y_train, y_test):
@@ -69,9 +70,9 @@ def classificate_rf(tfidf_train: sp.sparse.csr.csr_matrix, tfidf_test: sp.sparse
     report = classification_report(
         y_true, y_pred, zero_division=0, output_dict=True)
     df = pd.DataFrame(report).transpose()
-    df
+    st.write(df)
     # Print Confusion Matrix
-    plot_confusion_matrix(rf_clf, tfidf_test, y_test)
+    # plot_confusion_matrix(rf_clf, tfidf_test, y_test)
 
 
 def classificate_nb(tfidf_train: sp.sparse.csr.csr_matrix, tfidf_test: sp.sparse.csr.csr_matrix, y_train, y_test):
@@ -85,9 +86,9 @@ def classificate_nb(tfidf_train: sp.sparse.csr.csr_matrix, tfidf_test: sp.sparse
     report = classification_report(
         y_true, y_pred, zero_division=0, output_dict=True)
     df = pd.DataFrame(report).transpose()
-    df
+    st.write(df)
     # Print Confusion Matrix
-    plot_confusion_matrix(mnb_clf, tfidf_test, y_test)
+    # plot_confusion_matrix(mnb_clf, tfidf_test, y_test)
 
 
 def classificate_mlp(tfidf_train: sp.sparse.csr.csr_matrix, tfidf_test: sp.sparse.csr.csr_matrix, y_train, y_test):
@@ -102,6 +103,59 @@ def classificate_mlp(tfidf_train: sp.sparse.csr.csr_matrix, tfidf_test: sp.spars
     report = classification_report(
         y_true, y_pred, zero_division=0, output_dict=True)
     df = pd.DataFrame(report).transpose()
-    df
+    st.write(df)
     # Print Confusion Matrix
-    plot_confusion_matrix(mlp_clf, tfidf_test, y_test)
+    # plot_confusion_matrix(mlp_clf, tfidf_test, y_test)
+
+# --------------------------------------------------------------------------------
+
+
+def test_hyperparams(classifier: str, tfidf_train: sp.sparse.csr.csr_matrix, tfidf_test: sp.sparse.csr.csr_matrix, y_train, y_test):
+    tuned_parameters = {}
+    classification = None
+
+    if classifier == 'Random Forest':
+        tuned_parameters = {'n_estimators': [100, 200, 300, 400, 500], "max_depth": [
+            3, 4, 5, 6, 7, 8, None], 'criterion': ['gini', 'entropy'], 'max_features': ['auto', 'sqrt', 'log2']}
+        classification = RandomForestClassifier()
+    elif classifier == 'Naive Bayes':
+        tuned_parameters = {'alpha': [1, 0.1, 0.01, 0.001, 0.0001, 0.00001]}
+        classification = MultinomialNB()
+    elif classifier == 'Multilayer Perceptron':
+        tuned_parameters = {'learning_rate': [
+            'constant', 'invscaling', 'adaptive'], 'alpha': [0.001, 0.0001, 0.00001, 0.00001]}
+        classification = MLPClassifier()
+    elif classifier == 'SVM':
+        tuned_parameters = {'kernel': ['rbf', 'poly', 'sigmoid', 'linear'], "gamma": [
+            1e-3, 1e-4], "C": [1, 10, 100, 1000]}
+        classification = SVC()
+
+    score = 'f1'
+
+    st.write("# Tuning hyper-parameters for %s" % score)
+    st.write()
+
+    clf = GridSearchCV(classification, tuned_parameters,
+                       scoring="%s_macro" % score, n_jobs=-1)
+    clf.fit(tfidf_train, y_train)
+
+    st.write("Best parameters set found on development set:")
+    st.write()
+    st.write(clf.best_params_)
+    st.write()
+    st.write("Grid scores on development set:")
+    st.write()
+    means = clf.cv_results_["mean_test_score"]
+    stds = clf.cv_results_["std_test_score"]
+    for mean, std, params in zip(means, stds, clf.cv_results_["params"]):
+        st.write("%0.3f (+/-%0.03f) for %r" % (mean, std * 2, params))
+    st.write()
+
+    st.write("Detailed classification report:")
+    st.write()
+    st.write("The model is trained on the full development set.")
+    st.write("The scores are computed on the full evaluation set.")
+    st.write()
+    y_true, y_pred = y_test, clf.predict(tfidf_test)
+    st.write(classification_report(y_true, y_pred))
+    st.write()

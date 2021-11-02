@@ -8,3 +8,5 @@ protobuf==3.19.1
 scipy
 matplotlib
 seaborn
+contractions
+word2number
