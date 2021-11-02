@@ -79,7 +79,7 @@ def apply_tfidf(x_train: pd.DataFrame, x_test: pd.DataFrame, data_text: pd.DataF
 # ----------------------------------------------------------------------------------------------------
 
 
-DATASET_FILE_PATH = 'https: // github.com/ACSouzaJr/FSI-Final/blob/main/dataset/News_Category_Dataset_v2.json'
+DATASET_FILE_PATH = 'dataset/News_Category_Dataset_v2.json'
 
 # Read Data
 st.title("Classificação de Notícias em Categorias")
